@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="LiveSession.Core/LiveSession.Core.csproj" />
+  <Project Path="LiveSession.Infrastructure/LiveSession.Infrastructure.csproj" />
+  <Project Path="LiveSession.Tests/LiveSession.Tests.csproj" />
+  <Project Path="LiveSession.UI/LiveSession.UI.csproj" />
+</Solution>

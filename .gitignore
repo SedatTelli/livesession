@@ -1,0 +1,25 @@
+## .NET
+bin/
+obj/
+*.user
+.vs/
+*.suo
+*.userosscache
+*.sln.docstates
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Publish output (tracked separately as release asset)
+**/publish/
+
+## Logs
+*.log
+
+## Settings (user-specific)
+settings.json
+
+## OS
+.DS_Store
+Thumbs.db
+desktop.ini

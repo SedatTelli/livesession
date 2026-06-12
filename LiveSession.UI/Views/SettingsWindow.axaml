@@ -1,0 +1,91 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LiveSession.UI.ViewModels"
+        x:Class="LiveSession.UI.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="LiveSession – Settings"
+        Icon="/Assets/livesession.ico"
+        Width="500" Height="460"
+        MinWidth="500" MinHeight="380"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="20">
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0"
+                   Text="Protected Applications"
+                   FontSize="16" FontWeight="SemiBold"
+                   Margin="0 0 0 4"/>
+
+        <TextBlock Grid.Row="1"
+                   Text="Check each app to keep it alive and set how often to send a keep-alive signal."
+                   Opacity="0.55" FontSize="11" TextWrapping="Wrap"
+                   Margin="0 0 0 12"/>
+
+        <!-- Target list -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                CornerRadius="8">
+            <ScrollViewer Padding="8">
+                <ItemsControl ItemsSource="{Binding Targets}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:TargetItemViewModel">
+                            <Border CornerRadius="6" Margin="0 3" Padding="10 8"
+                                    Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+                                <Grid ColumnDefinitions="Auto,*,150,44">
+
+                                    <CheckBox Grid.Column="0"
+                                              IsChecked="{Binding IsEnabled}"
+                                              VerticalAlignment="Center"
+                                              Margin="0 0 8 0"/>
+
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding DisplayLabel}"
+                                               VerticalAlignment="Center"
+                                               FontSize="13"
+                                               TextTrimming="CharacterEllipsis"/>
+
+                                    <Slider Grid.Column="2"
+                                            Minimum="1" Maximum="120"
+                                            Value="{Binding IntervalMinutes}"
+                                            VerticalAlignment="Center"
+                                            Margin="8 0 4 0"
+                                            TickFrequency="1"
+                                            IsSnapToTickEnabled="True"/>
+
+                                    <TextBlock Grid.Column="3"
+                                               Text="{Binding IntervalLabel}"
+                                               VerticalAlignment="Center"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Width="40" TextAlignment="Right"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Status message -->
+        <TextBlock Grid.Row="3"
+                   Text="{Binding StatusMessage}"
+                   Opacity="0.6" FontSize="11"
+                   Margin="0 8 0 0"
+                   HorizontalAlignment="Left"/>
+
+        <!-- Buttons -->
+        <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto" Margin="0 10 0 0">
+            <Button Grid.Column="1"
+                    Content="Refresh Apps"
+                    Command="{Binding RefreshCommand}"
+                    Margin="0 0 8 0"/>
+            <Button Grid.Column="2"
+                    Content="Save"
+                    Command="{Binding SaveCommand}"
+                    Classes="accent"/>
+        </Grid>
+
+    </Grid>
+</Window>

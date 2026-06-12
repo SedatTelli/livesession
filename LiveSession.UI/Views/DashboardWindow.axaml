@@ -1,0 +1,127 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LiveSession.UI.ViewModels"
+        x:Class="LiveSession.UI.Views.DashboardWindow"
+        x:DataType="vm:DashboardViewModel"
+        Title="LiveSession Dashboard"
+        Icon="/Assets/livesession.ico"
+        Width="420" Height="440"
+        MinWidth="420" MinHeight="440"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="20">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0 0 0 14">
+            <TextBlock Text="LiveSession" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+            <Border Background="#22AA44" CornerRadius="4" Padding="6 2" VerticalAlignment="Center"
+                    IsVisible="{Binding !IsPaused}">
+                <TextBlock Text="Active" FontSize="11" Foreground="White"/>
+            </Border>
+            <Border Background="#CC6600" CornerRadius="4" Padding="6 2" VerticalAlignment="Center"
+                    IsVisible="{Binding IsPaused}">
+                <TextBlock Text="Paused" FontSize="11" Foreground="White"/>
+            </Border>
+        </StackPanel>
+
+        <!-- Targets header -->
+        <TextBlock Grid.Row="1" Text="Monitored Apps"
+                   Opacity="0.55" FontSize="11" Margin="0 0 0 6"/>
+
+        <!-- Targets list -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                CornerRadius="8" Padding="10 6">
+            <ItemsControl ItemsSource="{Binding Targets}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:TargetStatusRow">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="2 5">
+
+                            <!-- Status dot -->
+                            <Ellipse Grid.Column="0" Width="8" Height="8"
+                                     Fill="#22CC55" VerticalAlignment="Center"
+                                     Margin="0 0 8 0"
+                                     IsVisible="{Binding IsRunning}"/>
+                            <Ellipse Grid.Column="0" Width="8" Height="8"
+                                     Fill="#666666" VerticalAlignment="Center"
+                                     Margin="0 0 8 0"
+                                     IsVisible="{Binding !IsRunning}"/>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding DisplayLabel}"
+                                       VerticalAlignment="Center"
+                                       FontSize="12"
+                                       TextTrimming="CharacterEllipsis"/>
+
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding IntervalMinutes, StringFormat={}{0}m}"
+                                       FontSize="11" Opacity="0.5"
+                                       VerticalAlignment="Center"
+                                       Margin="6 0"/>
+
+                            <TextBlock Grid.Column="3"
+                                       Text="{Binding LastKeepalive}"
+                                       FontSize="11" Opacity="0.7"
+                                       VerticalAlignment="Center"
+                                       Width="58" TextAlignment="Right"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <!-- Stats -->
+        <Border Grid.Row="3"
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                CornerRadius="8" Padding="16 12" Margin="0 10 0 0">
+            <Grid RowDefinitions="Auto,8,Auto,8,Auto" ColumnDefinitions="*,Auto">
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Last Keep-Alive" Opacity="0.6" FontSize="12"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding LastKeepAliveTime}" FontWeight="SemiBold"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Last Action" Opacity="0.6" FontSize="12"/>
+                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                    <TextBlock Text="{Binding LastActionType}" FontWeight="SemiBold"/>
+                    <TextBlock Text="→" Opacity="0.5"/>
+                    <TextBlock Text="{Binding LastTarget}" FontWeight="SemiBold"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Current Idle" Opacity="0.6" FontSize="12"/>
+                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding CurrentIdleTime}" FontWeight="SemiBold"/>
+
+            </Grid>
+        </Border>
+
+        <!-- Footer -->
+        <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="0 14 0 0">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <TextBlock Text="Today:" Opacity="0.6" FontSize="12"/>
+                <TextBlock Text="{Binding TodayActionsCount}" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Text="actions" Opacity="0.6" FontSize="12"/>
+            </StackPanel>
+
+            <Button Grid.Column="1"
+                    Command="{Binding TogglePauseCommand}"
+                    Content="{Binding PauseButtonText}"
+                    Width="155"/>
+        </Grid>
+
+        <!-- Developer info / LinkedIn -->
+        <Button Grid.Row="5"
+                Command="{Binding OpenLinkedInCommand}"
+                HorizontalAlignment="Center"
+                Margin="0 8 0 0"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="4 2"
+                Cursor="Hand">
+            <TextBlock Text="by Sedat Telli · LinkedIn"
+                       FontSize="12" FontWeight="SemiBold"
+                       Foreground="#0077B5"
+                       TextDecorations="Underline"/>
+        </Button>
+
+    </Grid>
+</Window>
