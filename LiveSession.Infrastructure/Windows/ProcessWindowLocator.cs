@@ -14,13 +14,18 @@ internal static class ProcessWindowLocator
         if (pids.Count == 0) return [];
 
         var topLevel = FindTopLevelWindows(pids);
-        var result   = new List<IntPtr>();
+        if (topLevel.Count == 0) return [];
+
+        var result = new List<IntPtr>();
 
         foreach (var hwnd in topLevel)
         {
-            // Chromium tabanlı tarayıcılar için renderer penceresini bul
-            var renderer = FindChildByClass(hwnd, ChromiumRendererClass);
-            result.Add(renderer != IntPtr.Zero ? renderer : hwnd);
+            // Tüm sekmelerin renderer'larını bul (sadece aktif sekme değil)
+            var renderers = FindAllChildrenByClass(hwnd, ChromiumRendererClass);
+            if (renderers.Count > 0)
+                result.AddRange(renderers);
+            else
+                result.Add(hwnd); // Chromium değil, top-level'ı hedefle
         }
 
         return result;
@@ -73,17 +78,17 @@ internal static class ProcessWindowLocator
         return sb.Length > 0;
     }
 
-    private static IntPtr FindChildByClass(IntPtr parent, string targetClass)
+    private static List<IntPtr> FindAllChildrenByClass(IntPtr parent, string targetClass)
     {
-        IntPtr found = IntPtr.Zero;
-        var sb = new StringBuilder(256);
+        var found = new List<IntPtr>();
+        var sb    = new StringBuilder(256);
 
         NativeMethods.EnumChildWindows(parent, (hWnd, _) =>
         {
             NativeMethods.GetClassName(hWnd, sb, sb.Capacity);
-            if (sb.ToString() != targetClass) return true;
-            found = hWnd;
-            return false;
+            if (sb.ToString() == targetClass)
+                found.Add(hWnd);
+            return true; // tüm child'ları tara, ilkinde durma
         }, IntPtr.Zero);
 
         return found;

@@ -42,7 +42,7 @@ public sealed class KeepAliveEngine : IKeepAliveEngine
         if (windows.Count > 0)
         {
             PostToWindows(windows, action);
-            _logger.LogInformation("Action: {Action} → {Process} (PostMessage, {Count} window(s))",
+            _logger.LogInformation("Action: {Action} → {Process} ({Count} renderer(s))",
                 action, processName, windows.Count);
         }
         else
