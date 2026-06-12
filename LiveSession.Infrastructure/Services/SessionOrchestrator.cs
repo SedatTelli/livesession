@@ -1,5 +1,6 @@
 using LiveSession.Core.Interfaces;
 using LiveSession.Core.Models;
+using LiveSession.Infrastructure.Chromium;
 using LiveSession.Infrastructure.Windows;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ public sealed class SessionOrchestrator : BackgroundService, ISessionOrchestrato
     private readonly IKeepAliveEngine _keepAliveEngine;
     private readonly ILogger<SessionOrchestrator> _logger;
     private readonly AppSettings _settings;
+    private readonly SalesforceHeartbeat _sfHeartbeat;
 
     // Per-target last keep-alive timestamp
     private readonly Dictionary<string, DateTime> _lastKeepAlive = new(StringComparer.OrdinalIgnoreCase);
@@ -33,6 +35,7 @@ public sealed class SessionOrchestrator : BackgroundService, ISessionOrchestrato
         _keepAliveEngine = keepAliveEngine;
         _settings        = settings.Value;
         _logger          = logger;
+        _sfHeartbeat     = new SalesforceHeartbeat(logger);
 
         // Başlangıçta Status.Targets listesini ayarla
         SyncTargets(_settings.TargetProcesses);
@@ -120,6 +123,10 @@ public sealed class SessionOrchestrator : BackgroundService, ISessionOrchestrato
                                                             : target.ProcessName;
                                 Status.TodayActionsCount++;
                                 KeepAliveSent?.Invoke(this, result);
+
+                                // Island Browser için Salesforce HTTP heartbeat — server-side session'ı sıfırla
+                                if (target.ProcessName.Equals("Island", StringComparison.OrdinalIgnoreCase))
+                                    _ = _sfHeartbeat.PingAsync();
                             }
                         }
 
