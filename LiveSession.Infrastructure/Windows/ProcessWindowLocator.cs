@@ -35,6 +35,13 @@ internal static class ProcessWindowLocator
     internal static bool IsProcessRunning(string processName)
         => FindWindows(processName).Count > 0;
 
+    // Focus için top-level pencereler (renderer değil, ana pencere)
+    internal static List<IntPtr> FindTopLevelWindows(string processName)
+    {
+        var pids = GetPids(processName);
+        return pids.Count == 0 ? [] : FindTopLevelWindows(pids);
+    }
+
     private static HashSet<uint> GetPids(string processName)
     {
         var pids = new HashSet<uint>();
