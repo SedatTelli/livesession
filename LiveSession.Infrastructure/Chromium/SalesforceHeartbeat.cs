@@ -6,73 +6,80 @@ internal sealed class SalesforceHeartbeat
 {
     private static readonly HttpClient _http = new(new HttpClientHandler
     {
-        AllowAutoRedirect = false,
+        AllowAutoRedirect = true,
+        MaxAutomaticRedirections = 3,
         UseCookies        = false,
         ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
     })
     {
-        Timeout = TimeSpan.FromSeconds(10)
+        Timeout = TimeSpan.FromSeconds(15)
     };
 
-    private static readonly string IslandUserDataDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Island", "Island", "User Data");
+    // Island Browser'ın farklı kurulumlarda kullanabileceği olası yollar
+    private static readonly string[] IslandUserDataPaths =
+    [
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Island", "Island", "User Data"),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Island", "User Data"),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Island", "Island", "User Data"),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Island", "User Data"),
+    ];
+
+    private const string SalesforceBaseUrl =
+        "https://marriottintl.lightning.force.com/lightning/o/Case/home";
 
     private readonly ILogger _logger;
 
     internal SalesforceHeartbeat(ILogger logger) => _logger = logger;
 
-    /// <summary>
-    /// Island Browser'dan Salesforce cookie'lerini okur ve
-    /// salesforce.com'a HEAD isteği atarak server session'ı sıfırlar.
-    /// </summary>
     internal async Task PingAsync()
     {
-        if (!Directory.Exists(IslandUserDataDir))
+        var userDataDir = FindIslandUserDataDir();
+        if (userDataDir is null)
         {
-            _logger.LogDebug("Island user data not found: {Dir}", IslandUserDataDir);
+            _logger.LogWarning("Salesforce heartbeat: Island Browser user data directory not found. Tried: {Paths}",
+                string.Join(", ", IslandUserDataPaths));
             return;
         }
 
-        var cookieHeader = ChromiumCookieReader.GetSalesforceCookieHeader(IslandUserDataDir);
+        var cookieHeader = ChromiumCookieReader.GetSalesforceCookieHeader(userDataDir);
         if (cookieHeader is null)
         {
-            _logger.LogDebug("Salesforce heartbeat: no cookies found in Island Browser");
-            return;
-        }
-
-        // Salesforce org URL'ini cookie'den çıkar (sid cookie'nin host'u)
-        var orgUrl = ExtractOrgUrl(cookieHeader);
-        if (orgUrl is null)
-        {
-            _logger.LogDebug("Salesforce heartbeat: could not determine org URL");
+            _logger.LogWarning("Salesforce heartbeat: no Salesforce cookies found in Island Browser (dir: {Dir})",
+                userDataDir);
             return;
         }
 
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Head, orgUrl);
+            using var req = new HttpRequestMessage(HttpMethod.Get, SalesforceBaseUrl);
             req.Headers.TryAddWithoutValidation("Cookie", cookieHeader);
             req.Headers.TryAddWithoutValidation("User-Agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            req.Headers.TryAddWithoutValidation("Accept",
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            req.Headers.TryAddWithoutValidation("Referer",
+                "https://marriottintl.lightning.force.com/");
 
-            using var resp = await _http.SendAsync(req);
-            _logger.LogInformation("Salesforce HTTP heartbeat → {Url} [{Status}]",
-                orgUrl, (int)resp.StatusCode);
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+            _logger.LogInformation("Salesforce heartbeat → {Url} [{Status}]",
+                SalesforceBaseUrl, (int)resp.StatusCode);
         }
         catch (Exception ex)
         {
-            _logger.LogDebug("Salesforce heartbeat request failed: {Msg}", ex.Message);
+            _logger.LogWarning("Salesforce heartbeat request failed: {Msg}", ex.Message);
         }
     }
 
-    private static string? ExtractOrgUrl(string cookieHeader)
+    private static string? FindIslandUserDataDir()
     {
-        // Bilinen Marriott Salesforce URL'i — cookie'de "sid" varsa bu domain için ping at
-        if (cookieHeader.Contains("sid=", StringComparison.OrdinalIgnoreCase))
-            return "https://marriottintl.lightning.force.com/";
-
+        foreach (var path in IslandUserDataPaths)
+            if (Directory.Exists(path))
+                return path;
         return null;
     }
 }
