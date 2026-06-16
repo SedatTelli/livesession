@@ -12,6 +12,14 @@ internal static class ChromiumCookieReader
     /// Hata durumunda null döner — çağıran kodu bozmaz.
     /// </summary>
     internal static string? GetSalesforceCookieHeader(string userDataDir)
+        => GetCookieHeader(userDataDir,
+            "host_key LIKE '%.salesforce.com%' OR host_key LIKE '%.force.com%'");
+
+    internal static string? GetMarriottSsoCookieHeader(string userDataDir)
+        => GetCookieHeader(userDataDir,
+            "host_key LIKE '%.marriott.com%' OR host_key LIKE '%.marriotts.com%'");
+
+    private static string? GetCookieHeader(string userDataDir, string whereClause)
     {
         try
         {
@@ -26,7 +34,7 @@ internal static class ChromiumCookieReader
             try
             {
                 File.Copy(cookiesDb, tmp, overwrite: true);
-                return ReadCookies(tmp, key);
+                return ReadCookies(tmp, key, whereClause);
             }
             finally
             {
@@ -57,7 +65,7 @@ internal static class ChromiumCookieReader
         return ProtectedData.Unprotect(dpapi, null, DataProtectionScope.CurrentUser);
     }
 
-    private static string? ReadCookies(string dbPath, byte[] key)
+    private static string? ReadCookies(string dbPath, byte[] key, string whereClause)
     {
         var parts = new List<string>();
 
@@ -71,11 +79,10 @@ internal static class ChromiumCookieReader
         conn.Open();
 
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"
+        cmd.CommandText = $@"
             SELECT name, value, encrypted_value
             FROM cookies
-            WHERE host_key LIKE '%.salesforce.com%'
-               OR host_key LIKE '%.force.com%'
+            WHERE {whereClause}
             ORDER BY host_key, name";
 
         using var reader = cmd.ExecuteReader();

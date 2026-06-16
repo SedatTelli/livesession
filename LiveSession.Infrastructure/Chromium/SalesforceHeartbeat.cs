@@ -28,8 +28,8 @@ internal sealed class SalesforceHeartbeat
             "Island", "User Data"),
     ];
 
-    private const string SalesforceBaseUrl =
-        "https://marriottintl.lightning.force.com/lightning/o/Case/home";
+    private const string SalesforceUrl  = "https://marriottintl.lightning.force.com/lightning/o/Case/home";
+    private const string MarriottSsoUrl = "https://extranetcloud.marriott.com/";
 
     private readonly ILogger _logger;
 
@@ -40,38 +40,61 @@ internal sealed class SalesforceHeartbeat
         var userDataDir = FindIslandUserDataDir();
         if (userDataDir is null)
         {
-            _logger.LogWarning("Salesforce heartbeat: Island Browser user data directory not found. Tried: {Paths}",
+            _logger.LogWarning("GXP heartbeat: Island Browser user data directory not found. Tried: {Paths}",
                 string.Join(", ", IslandUserDataPaths));
             return;
         }
 
-        var cookieHeader = ChromiumCookieReader.GetSalesforceCookieHeader(userDataDir);
-        if (cookieHeader is null)
+        // İki session paralel olarak canlı tutulur
+        await Task.WhenAll(
+            PingSalesforceAsync(userDataDir),
+            PingMarriottSsoAsync(userDataDir));
+    }
+
+    private async Task PingSalesforceAsync(string userDataDir)
+    {
+        var cookies = ChromiumCookieReader.GetSalesforceCookieHeader(userDataDir);
+        if (cookies is null)
         {
-            _logger.LogWarning("Salesforce heartbeat: no Salesforce cookies found in Island Browser (dir: {Dir})",
-                userDataDir);
+            _logger.LogWarning("GXP heartbeat: no Salesforce cookies found in Island Browser");
             return;
         }
 
+        await SendGetAsync(SalesforceUrl, cookies, "https://marriottintl.lightning.force.com/", "Salesforce");
+    }
+
+    private async Task PingMarriottSsoAsync(string userDataDir)
+    {
+        var cookies = ChromiumCookieReader.GetMarriottSsoCookieHeader(userDataDir);
+        if (cookies is null)
+        {
+            _logger.LogWarning("GXP heartbeat: no Marriott SSO cookies found in Island Browser");
+            return;
+        }
+
+        await SendGetAsync(MarriottSsoUrl, cookies, MarriottSsoUrl, "Marriott SSO");
+    }
+
+    private async Task SendGetAsync(string url, string cookieHeader, string referer, string label)
+    {
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get, SalesforceBaseUrl);
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
             req.Headers.TryAddWithoutValidation("Cookie", cookieHeader);
             req.Headers.TryAddWithoutValidation("User-Agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
             req.Headers.TryAddWithoutValidation("Accept",
                 "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-            req.Headers.TryAddWithoutValidation("Referer",
-                "https://marriottintl.lightning.force.com/");
+            req.Headers.TryAddWithoutValidation("Referer", referer);
 
             using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
-            _logger.LogInformation("Salesforce heartbeat → {Url} [{Status}]",
-                SalesforceBaseUrl, (int)resp.StatusCode);
+            _logger.LogInformation("GXP heartbeat [{Label}] → {Url} [{Status}]",
+                label, url, (int)resp.StatusCode);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("Salesforce heartbeat request failed: {Msg}", ex.Message);
+            _logger.LogWarning("GXP heartbeat [{Label}] failed: {Msg}", label, ex.Message);
         }
     }
 
