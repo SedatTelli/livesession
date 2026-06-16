@@ -2,7 +2,6 @@ using LiveSession.Core.Interfaces;
 using LiveSession.Core.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Threading;
 
 namespace LiveSession.Infrastructure.Windows;
 
@@ -42,16 +41,8 @@ public sealed class KeepAliveEngine : IKeepAliveEngine
 
         if (windows.Count > 0)
         {
-            // 1) PostMessage: tüm sekmelere görünmez event (isTrusted:false)
             PostToWindows(windows, action);
-
-            // 2) Focus + SendInput: isTrusted:true — Salesforce/kurumsal uygulamalar için
-            var topLevels = ProcessWindowLocator.FindTopLevelWindows(processName);
-            var vk        = ActionToVk(action);
-            foreach (var tlw in topLevels)
-                FocusAndSendKey(tlw, vk);
-
-            _logger.LogInformation("Action: {Action} → {Process} ({Count} renderer(s), focus+input)",
+            _logger.LogInformation("Action: {Action} → {Process} ({Count} renderer(s))",
                 action, processName, windows.Count);
         }
         else
@@ -90,38 +81,6 @@ public sealed class KeepAliveEngine : IKeepAliveEngine
         KeepAliveAction.ShiftKey => NativeMethods.VK_LSHIFT,
         _                        => NativeMethods.VK_LSHIFT
     };
-
-    // ─── Focus + SendInput (isTrusted:true) ──────────────────────────────────
-
-    private static void FocusAndSendKey(IntPtr hwnd, ushort vk)
-    {
-        var prevHwnd = NativeMethods.GetForegroundWindow();
-        if (prevHwnd == hwnd)
-        {
-            // Zaten öndeyse direkt gönder
-            SendKey(vk);
-            return;
-        }
-
-        uint prevTid = NativeMethods.GetWindowThreadProcessId(prevHwnd, out _);
-        uint myTid   = NativeMethods.GetCurrentThreadId();
-
-        try
-        {
-            // Foreground thread'e geçici bağlan → SetForegroundWindow çalışır
-            NativeMethods.AttachThreadInput(myTid, prevTid, true);
-            NativeMethods.SetForegroundWindow(hwnd);
-            Thread.Sleep(50); // focus settle
-            SendKey(vk);      // isTrusted:true
-        }
-        finally
-        {
-            NativeMethods.AttachThreadInput(myTid, prevTid, false);
-            // Önceki pencereye geri dön
-            if (prevHwnd != IntPtr.Zero)
-                NativeMethods.SetForegroundWindow(prevHwnd);
-        }
-    }
 
     // ─── Global SendInput (fallback) ─────────────────────────────────────────
 
